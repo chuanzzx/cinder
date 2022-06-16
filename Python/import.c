@@ -2077,13 +2077,16 @@ PyObject *
 PyImport_ImportName(PyObject *builtins, PyObject *globals, PyObject *locals,
                     PyObject *name, PyObject *fromlist, PyObject *level)  // replaces PyImport_DeferredImportName
 {
-    PyThreadState *tstate = _PyThreadState_GET();
-    int verbose = _PyInterpreterState_GetConfig(tstate->interp)->verbose;
+    PyInterpreterState *interp = _PyInterpreterState_GET();
+    int verbose = _PyInterpreterState_GetConfig(interp)->verbose;
     bool lazy_imports_enabled = _PyImport_LazyImportsIsEnabled();
 
-    if (!lazy_imports_enabled) {
+    if ((!lazy_imports_enabled) ||
+        (interp->eager_loaded != NULL && PySet_Contains(interp->eager_loaded, name)))
+    {
         return PyImport_EagerImportName(builtins, globals, locals, name, fromlist, level, NULL);
     }
+
     if (verbose) {
         fprintf(stderr, "# lazy import '%s'\n", PyUnicode_AsUTF8(name));
     }
@@ -2786,8 +2789,36 @@ _imp_is_lazy_import_impl(PyObject *module, PyObject *dict, PyObject *key)
 }
 
 static PyObject *
-_imp_set_lazy_imports_impl(PyObject *module)
+_imp_set_lazy_imports_impl(PyObject *module, PyObject *eager_imports)
 {
+    PyInterpreterState *interp = _PyInterpreterState_GET();
+
+    // *will* need to eagerly import modules in `eager_imports`
+    if (eager_imports != Py_None) {
+
+        if (interp->eager_loaded == NULL) {
+            interp->eager_loaded = PySet_New(NULL);
+            // if (!interp->eager_loaded) {
+            //     // error
+            //     // cannot allocate a set for eager_loaded
+            // }
+        }
+        else {
+            // clear set
+            Py_CLEAR(interp->eager_loaded);
+        }
+
+        // record each eager_import
+        Py_ssize_t i, n_imports;
+        n_imports = PyList_Size(eager_imports);
+
+        for (i = 0; i < n_imports; i++) {
+            PyObject *eager_import = PyList_GetItem(eager_imports, i);
+            printf("Will eagerly import %s ! \n", PyUnicode_AsUTF8(eager_import));
+            PySet_Add(interp->eager_loaded, eager_import);
+        }
+    }
+
     // enable lazy imports
     int lazy_imports_status = PyImport_EnableLazyImports();
 

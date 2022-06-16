@@ -606,18 +606,25 @@ PyDoc_STRVAR(_imp_set_lazy_imports__doc__,
     {"set_lazy_imports", _PyCFunction_CAST(_imp_set_lazy_imports), METH_FASTCALL, _imp_set_lazy_imports__doc__},
 
 static PyObject *
-_imp_set_lazy_imports_impl(PyObject *module);
+_imp_set_lazy_imports_impl(PyObject *module, PyObject *eager_imports);
 
 static PyObject *
 _imp_set_lazy_imports(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
 {
     PyObject *return_value = NULL;
 
-    if (!_PyArg_CheckPositional("set_lazy_imports", nargs, 0, 0)) {
+    if (!_PyArg_CheckPositional("set_lazy_imports", nargs, 1, 1)) {
         goto exit;
     }
 
-    return_value = _imp_set_lazy_imports_impl(module);
+    if ((args[0] != Py_None) && !PyList_Check(args[0])) {
+        _PyArg_BadArgument("set_lazy_imports", "argument 1", "list", args[0]);
+        goto exit;
+    }
+
+    // enable lazy imports and make modules in `args[0]` eager
+    // `args[0]` may be empty
+    return_value = _imp_set_lazy_imports_impl(module, args[0]);
 
 exit:
     return return_value;

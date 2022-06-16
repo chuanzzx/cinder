@@ -67,12 +67,12 @@ def is_lazy_import(dictionary, key):
     """
     return _imp.is_lazy_import(dictionary, key)
 
-def set_lazy_imports():
+def set_lazy_imports(eager_imports=None):
     """Call set_lazy_imports() to enable Lazy Imports.
 
     The imported modules after this point will be lazily imported.
     """
-    enabled = _imp.set_lazy_imports()
+    enabled = _imp.set_lazy_imports(eager_imports)
 
     # failed in enabling lazy imports
     if not enabled:
