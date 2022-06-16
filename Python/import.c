@@ -26,7 +26,7 @@ extern "C" {
 
 /* Forward references */
 static PyObject *import_add_module(PyThreadState *tstate, PyObject *name);
-static bool _PyImport_LazyImportsIsEnabled(void);
+static int _PyImport_IsLazyImportsEnabled(void);
 
 /* See _PyImport_FixupExtensionObject() below */
 static PyObject *extensions = NULL;
@@ -2077,9 +2077,9 @@ PyObject *
 PyImport_ImportName(PyObject *builtins, PyObject *globals, PyObject *locals,
                     PyObject *name, PyObject *fromlist, PyObject *level)  // replaces PyImport_DeferredImportName
 {
-    PyInterpreterState *interp = _PyInterpreterState_GET();
-    int verbose = _PyInterpreterState_GetConfig(interp)->verbose;
-    bool lazy_imports_enabled = _PyImport_LazyImportsIsEnabled();
+    PyThreadState *tstate = _PyThreadState_GET();
+    int verbose = _PyInterpreterState_GetConfig(tstate->interp)->verbose;
+    int lazy_imports_enabled = _PyImport_IsLazyImportsEnabled();
 
     if ((!lazy_imports_enabled) ||
         (interp->eager_loaded != NULL && PySet_Contains(interp->eager_loaded, name)))
@@ -2820,12 +2820,8 @@ _imp_set_lazy_imports_impl(PyObject *module, PyObject *eager_imports)
     }
 
     // enable lazy imports
-    int lazy_imports_status = PyImport_EnableLazyImports();
-
-    if (lazy_imports_status == 1) {
-        Py_RETURN_TRUE;
-    }
-    Py_RETURN_FALSE;
+    PyImport_EnableLazyImports();
+    Py_RETURN_NONE;
 }
 
 
@@ -3010,28 +3006,27 @@ PyImport_AppendInittab(const char *name, PyObject* (*initfunc)(void))
 }
 
 
-static bool
-_PyImport_LazyImportsIsEnabled()
+// Return 1 if lazy imports is enabled
+// Return 0 if lazy imports is not enabled
+static int
+_PyImport_IsLazyImportsEnabled()
 {
     PyInterpreterState *interp = _PyInterpreterState_GET();
-    if (_PyInterpreterState_GetConfig(interp)->lazy_imports |
-        interp->lazy_imports_enabled)
+    if (interp->lazy_imports_enabled ||
+        _PyInterpreterState_GetConfig(interp)->lazy_imports)
     {
-        return true;
-    }
-    return false;
-}
-
-int
-PyImport_EnableLazyImports()
-{
-    PyInterpreterState *interp = _PyInterpreterState_GET();
-    interp->lazy_imports_enabled = 1;
-
-    if (_PyImport_LazyImportsIsEnabled()) {
         return 1;
     }
     return 0;
+}
+
+void
+PyImport_EnableLazyImports()
+{
+    PyInterpreterState *interp = _PyInterpreterState_GET();
+
+    assert(interp != NULL);
+    interp->lazy_imports_enabled = 1;
 }
 
 
