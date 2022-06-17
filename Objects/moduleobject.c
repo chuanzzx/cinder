@@ -1105,6 +1105,12 @@ lazy_import_name(PyLazyImport *m)
     return m->lz_name;
 }
 
+PyObject *
+PyLazyImportObject_GetLazyImportName(PyObject *lazy_import)
+{
+    return lazy_import_name((PyLazyImport *)lazy_import);
+}
+
 static PyObject *
 lazy_import_repr(PyLazyImport *m)
 {

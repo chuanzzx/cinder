@@ -2077,13 +2077,16 @@ PyObject *
 PyImport_ImportName(PyObject *builtins, PyObject *globals, PyObject *locals,
                     PyObject *name, PyObject *fromlist, PyObject *level)  // replaces PyImport_DeferredImportName
 {
-    PyThreadState *tstate = _PyThreadState_GET();
-    int verbose = _PyInterpreterState_GetConfig(tstate->interp)->verbose;
+    PyInterpreterState *interp = _PyInterpreterState_GET();
+    int verbose = _PyInterpreterState_GetConfig(interp)->verbose;
     int lazy_imports_enabled = _PyImport_IsLazyImportsEnabled();
+
+    // printf("PyImport_ImportName name: %s\n", PyUnicode_AsUTF8(name));
 
     if ((!lazy_imports_enabled) ||
         (interp->eager_loaded != NULL && PySet_Contains(interp->eager_loaded, name)))
     {
+        // printf("eager\n");
         return PyImport_EagerImportName(builtins, globals, locals, name, fromlist, level, NULL);
     }
 
@@ -2096,6 +2099,7 @@ PyImport_ImportName(PyObject *builtins, PyObject *globals, PyObject *locals,
         return NULL;
     }
 
+    // printf("lazy\n");
     // TODO(lazy_imports): run `name` through `eager_imports` filter function
     return _PyImport_LazyImportModuleLevelObject(globals, locals, name, fromlist, ilevel);
 }
@@ -2202,12 +2206,17 @@ _imp_load_lazy_import_impl(PyLazyImport *lazy_import)  // was _imp_import_deferr
             return NULL;
         }
     } else {
-        PyObject *from = _imp_load_lazy_import_impl((PyLazyImport *)lazy_import->lz_lazy_import);
+        PyObject *from = _imp_load_lazy_import_impl((PyLazyImport *)lazy_import->lz_lazy_import); // load math (?)
         if (from == NULL) {
             return NULL;
         }
         PyThreadState *tstate = _PyThreadState_GET();
-        obj = _PyImport_ImportFrom(tstate, from, lazy_import->lz_name);
+        obj = _PyImport_ImportFrom(tstate, from, lazy_import->lz_name); // lz->name: pi
+
+        // PyObject *name = lazy_import->lz_name;
+        // PyObject *fullmodname = PyUnicode_FromFormat("%U.%U", PyObject_GetAttr(from, &_Py_ID(__name__)), name); // error, PyObject_GetAttr return NULL on failure
+        // printf("***** fullmodname: %s\n", PyUnicode_AsUTF8(fullmodname)); // math.pi
+
         Py_DECREF(from);
         if (obj == NULL) {
             return NULL;
@@ -2232,7 +2241,7 @@ PyImport_LoadLazyImport(PyObject *lazy_import)  // was PyImport_ImportDeferred(P
     PyLazyImport *lz = (PyLazyImport *)lazy_import;
     PyObject *obj = lz->lz_obj;
     if (obj == NULL) {
-        obj = _imp_load_lazy_import_impl(lz);
+        obj = _imp_load_lazy_import_impl(lz); // can load lazy object
         if (obj != NULL)
             lz->lz_obj = obj;
     }
@@ -2798,15 +2807,15 @@ _imp_set_lazy_imports_impl(PyObject *module, PyObject *eager_imports)
 
         if (interp->eager_loaded == NULL) {
             interp->eager_loaded = PySet_New(NULL);
-            // if (!interp->eager_loaded) {
-            //     // error
-            //     // cannot allocate a set for eager_loaded
-            // }
         }
         else {
-            // clear set
             Py_CLEAR(interp->eager_loaded);
+            interp->eager_loaded = PySet_New(NULL);
+
+            // size = PySet_GET_SIZE(interp->eager_loaded);
+            // printf("Set size: %zd \n", size);
         }
+
 
         // record each eager_import
         Py_ssize_t i, n_imports;

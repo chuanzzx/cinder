@@ -46,6 +46,7 @@ PyAPI_DATA(PyTypeObject) PyModuleDef_Type;
 // TODO(lazy_imports): ifdef guards?
 PyAPI_FUNC(PyObject *) PyLazyImportModule_NewObject(PyObject *name, PyObject *globals, PyObject *locals, PyObject *fromlist, PyObject *level);
 PyAPI_FUNC(PyObject *) PyLazyImportObject_NewObject(PyObject *from, PyObject *name);
+PyAPI_FUNC(PyObject *) PyLazyImportObject_GetLazyImportName(PyObject *lazy_import);
 
 typedef struct PyModuleDef_Base {
   PyObject_HEAD

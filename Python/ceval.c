@@ -3980,6 +3980,14 @@ handle_eval_breaker:
             PyObject *res;
             res = PyImport_ImportName(
                 frame->f_builtins, frame->f_globals, frame->f_locals, name, fromlist, level);
+
+            // PyObject *fullname = PyLazyImportObject_GetLazyImportName(res);
+            // if (PySet_Contains((tstate->interp)->eager_loaded, fullname)) {
+            //     printf("**** IMPORT_NAME LOAD fullname: %s\n", PyUnicode_AsUTF8(fullname));
+            //     res = PyImport_LoadLazyImport(res);
+            //     Py_DECREF(fullname);
+            // }
+
             Py_DECREF(level);
             Py_DECREF(fromlist);
             SET_TOP(res);
@@ -4024,8 +4032,19 @@ handle_eval_breaker:
             PyObject *name = GETITEM(names, oparg);
             PyObject *from = TOP();
             PyObject *res;
-            if (PyLazyImport_CheckExact(from))
+
+            if (PyLazyImport_CheckExact(from)) {
                 res = PyLazyImportObject_NewObject(from, name);
+
+                PyObject *fullname = PyLazyImportObject_GetLazyImportName(res);
+                if ((tstate->interp)->eager_loaded != NULL &&
+                    PySet_Contains((tstate->interp)->eager_loaded, fullname))
+                {
+                    printf("**** IMPORT_FROM LOAD fullname: %s\n", PyUnicode_AsUTF8(fullname));
+                    res = PyImport_LoadLazyImport(res);
+                }
+                Py_DECREF(fullname);
+            }
             else
                 res = _PyImport_ImportFrom(tstate, from, name);
             PUSH(res);
