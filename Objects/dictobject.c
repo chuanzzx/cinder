@@ -1065,6 +1065,7 @@ All arithmetic on hash should ignore overflow.
 Py_ssize_t
 dict_lookup_impl(PyDictObject *mp, PyObject *key, Py_hash_t hash, PyObject **value_addr, int resolve_lazy_imports)
 {
+    //printf("dict_lookup_impl\n");
     PyObject *value;
     PyObject *resolved_import = NULL;
     PyDictKeysObject *dk;
@@ -1125,12 +1126,14 @@ start:
             // Py_INCREF(startkey);
 
             Py_INCREF(value);
-            resolved_import = PyImport_LoadLazyImport(value);
+            resolved_import = PyImport_LoadLazyImport(value); // here
             Py_XINCREF(resolved_import);
             Py_DECREF(value);
             if (resolved_import == NULL) {
                 *value_addr = NULL;
-                return DKIX_VALUE_ERROR;
+                // return here
+                // printf("return DKIX_VALUE_ERROR\n");
+                return DKIX_VALUE_ERROR; // error  /* Used by deferred values resolution */
             }
             // dict mutated?
 
@@ -1918,7 +1921,9 @@ _PyDict_GetItem_KnownHash(PyObject *op, PyObject *key, Py_hash_t hash)
     }
 
     ix = _Py_dict_lookup(mp, key, hash, &value);
+    // printf("ix: %d\n", ix);
     assert(ix >= 0 || value == NULL);
+    // printf("return _PyDict_GetItem_KnownHash\n");
     return value;
 }
 

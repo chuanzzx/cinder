@@ -3902,6 +3902,7 @@ handle_eval_breaker:
         }
 
         TARGET(CHECK_EG_MATCH) {
+            printf("CHECK_EG_MATCH\n");
             PyObject *match_type = POP();
             if (check_except_star_type_valid(tstate, match_type) < 0) {
                 Py_DECREF(match_type);
@@ -3948,6 +3949,7 @@ handle_eval_breaker:
             assert(PyExceptionInstance_Check(left));
             if (check_except_type_valid(tstate, right) < 0) {
                  Py_DECREF(right);
+                 // not here
                  goto error;
             }
 
@@ -3958,6 +3960,7 @@ handle_eval_breaker:
         }
 
         TARGET(EAGER_IMPORT_NAME) {
+            // not here
             PyObject *name = GETITEM(names, oparg);
             PyObject *fromlist = POP();
             PyObject *level = TOP();
@@ -3978,6 +3981,7 @@ handle_eval_breaker:
             PyObject *fromlist = POP();
             PyObject *level = TOP();
             PyObject *res;
+            // printf("opcode import name\n");
             res = PyImport_ImportName(
                 frame->f_builtins, frame->f_globals, frame->f_locals, name, fromlist, level);
             Py_DECREF(level);
@@ -3989,9 +3993,12 @@ handle_eval_breaker:
         }
 
         TARGET(IMPORT_STAR) {
+            // printf("IMPORT_STAR\n");
             PyObject *from = POP(), *locals;
             int err;
             if (PyLazyImport_CheckExact(from)) {
+                // NOT form here
+                // printf("PyImport_LoadLazyImport\n");
                 PyObject *mod = PyImport_LoadLazyImport(from);
                 Py_XINCREF(mod);
                 Py_DECREF(from);
@@ -4015,8 +4022,10 @@ handle_eval_breaker:
             err = import_all_from(tstate, locals, from);
             _PyFrame_LocalsToFast(frame, 0);
             Py_DECREF(from);
-            if (err != 0)
+            if (err != 0) {
                 goto error;
+            }
+            // not reach here
             DISPATCH();
         }
 
@@ -4536,9 +4545,9 @@ handle_eval_breaker:
 
             if (meth == NULL) {
                 /* Most likely attribute wasn't found. */
+                // not here
                 goto error;
             }
-
             if (meth_found) {
                 /* We can bypass temporary bound method object.
                    meth is unbound method and obj is self.

@@ -84,7 +84,7 @@ PyAPI_FUNC(PyObject*) _PyTraceBack_FromFrame(
     PyObject *tb_next,
     PyFrameObject *frame);
 
-#define EXCEPTION_TB_HEADER "Traceback (most recent call last):\n"
+#define EXCEPTION_TB_HEADER "Traceback (most recent call last):\n" // header
 #define EXCEPTION_GROUP_TB_HEADER "Exception Group Traceback (most recent call last):\n"
 
 /* Write the traceback tb to file f. Prefix each line with

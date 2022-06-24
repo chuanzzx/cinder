@@ -495,6 +495,7 @@ static PyTypeObject _PyExc_ ## EXCNAME = { \
 }; \
 PyObject *PyExc_ ## EXCNAME = (PyObject *)&_PyExc_ ## EXCNAME
 
+// here define
 #define MiddlingExtendsException(EXCBASE, EXCNAME, EXCSTORE, EXCDOC) \
 static PyTypeObject _PyExc_ ## EXCNAME = { \
     PyVarObject_HEAD_INIT(NULL, 0) \
@@ -1608,8 +1609,18 @@ ComplexExtendsException(PyExc_Exception, ImportError,
  *    ModuleNotFoundError extends ImportError
  */
 
+// here
 MiddlingExtendsException(PyExc_ImportError, ModuleNotFoundError, ImportError,
                          "Module not found.");
+
+
+// LazyImportsError
+MiddlingExtendsException(PyExc_ImportError, LazyImportsError, ImportError,
+                         "Module not found when enabling Lazy Import.");
+
+//PyExc_BaseException
+//Objects/exceptions.c:1618:1: error: use of undeclared identifier 'ModuleNotFoundError_init'
+
 
 /*
  *    OSError extends Exception
@@ -3533,6 +3544,7 @@ static struct static_exception static_exceptions[] = {
     ITEM(IndexError),  // base: LookupError(Exception)
     ITEM(KeyError),  // base: LookupError(Exception)
     ITEM(ModuleNotFoundError), // base: ImportError(Exception)
+    ITEM(LazyImportsError),
     ITEM(NotImplementedError),  // base: RuntimeError(Exception)
     ITEM(RecursionError),  // base: RuntimeError(Exception)
     ITEM(UnboundLocalError), // base: NameError(Exception)

@@ -637,6 +637,7 @@ int
 PyModule_AddObjectRef(PyObject *mod, const char *name, PyObject *value)
 {
     if (!PyModule_Check(mod)) {
+        // error here
         PyErr_SetString(PyExc_TypeError,
                         "PyModule_AddObjectRef() first argument "
                         "must be a module");

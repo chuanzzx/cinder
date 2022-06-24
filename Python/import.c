@@ -27,6 +27,7 @@ extern "C" {
 /* Forward references */
 static PyObject *import_add_module(PyThreadState *tstate, PyObject *name);
 static int _PyImport_IsLazyImportsEnabled(void);
+static PyObject *LZERROR = NULL;
 
 /* See _PyImport_FixupExtensionObject() below */
 static PyObject *extensions = NULL;
@@ -1730,13 +1731,23 @@ import_find_and_load(PyThreadState *tstate, PyObject *abs_name, PyObject *lazy_l
         accumulated = 0;
     }
 
+
+    // PyObject *exc, *val, *tb;
+    // PyErr_Fetch(&exc, &val, &tb);
+    // _PyErr_ChainExceptions(exc, val, tb);
+
+    // start to store tb
     if (PyDTrace_IMPORT_FIND_LOAD_START_ENABLED())
         PyDTrace_IMPORT_FIND_LOAD_START(PyUnicode_AsUTF8(abs_name));
 
+    // from here to enter into the `_find_and_load` in _bootstrap.py
+    //printf("import_find_and_load here :)\n");
     mod = PyObject_CallMethodObjArgs(
         interp->importlib, &_Py_ID(_find_and_load), abs_name,
         interp->import_func, lazy_loaded ? lazy_loaded : Py_None, NULL);
 
+
+    // end of storing tb
     if (PyDTrace_IMPORT_FIND_LOAD_DONE_ENABLED())
         PyDTrace_IMPORT_FIND_LOAD_DONE(PyUnicode_AsUTF8(abs_name),
                                        mod != NULL);
@@ -1761,6 +1772,7 @@ _PyImport_ImportModuleLevelObject(PyObject *name, PyObject *globals,
                                  PyObject *locals, PyObject *fromlist,
                                  int level, PyObject *lazy_loaded)
 {
+    // => import_find_and_load
     PyThreadState *tstate = _PyThreadState_GET();
     PyObject *abs_name = NULL;
     PyObject *final_mod = NULL;
@@ -1815,9 +1827,13 @@ _PyImport_ImportModuleLevelObject(PyObject *name, PyObject *globals,
         }
     }
     else {
+        // here
         Py_XDECREF(mod);
         mod = import_find_and_load(tstate, abs_name, lazy_loaded);
         if (mod == NULL) {
+            // if (_PyImport_IsLazyImportsEnabled()) {
+            //     goto lazy_imports_error;
+            // }
             goto error;
         }
     }
@@ -1997,7 +2013,7 @@ _PyImport_LazyImportModuleLevelObject(
                                 if (lazy_object != NULL) {
                                     /* Only set side effects if the lazy object being set is different */
                                     // PyDict_GetItem
-                                    PyObject * d = _PyDict_GetItemKeepLazy(parent_dict, submodule_name);
+                                    PyObject * d = _PyDict_GetItemKeepLazy(parent_dict, submodule_name); // here..?
                                     if (d != NULL && PyLazyImport_CheckExact(d)) {
                                         assert(lazy_object->lz_next == NULL);
                                         Py_INCREF(d);
@@ -2037,18 +2053,23 @@ PyImport_EagerImportName(PyObject *builtins, PyObject *globals,
     PyThreadState *tstate = _PyThreadState_GET();
 
     import_func = _PyDict_GetItemWithError(builtins, &_Py_ID(__import__));
+    // go here
     if (import_func == NULL) {
         if (!_PyErr_Occurred(tstate)) {
+            // pass
             _PyErr_SetString(tstate, PyExc_ImportError, "__import__ not found");
         }
         return NULL;
     }
+
     /* Fast path for not overloaded __import__. */
     if (import_func == tstate->interp->import_func) {
         int ilevel = _PyLong_AsInt(level);
         if (ilevel == -1 && _PyErr_Occurred(tstate)) {
+            // pass
             return NULL;
         }
+        // here
         res = _PyImport_ImportModuleLevelObject(
                         name,
                         globals,
@@ -2077,6 +2098,7 @@ PyObject *
 PyImport_ImportName(PyObject *builtins, PyObject *globals, PyObject *locals,
                     PyObject *name, PyObject *fromlist, PyObject *level)  // replaces PyImport_DeferredImportName
 {
+    //printf("PyImport_ImportName\n");
     PyThreadState *tstate = _PyThreadState_GET();
     int verbose = _PyInterpreterState_GetConfig(tstate->interp)->verbose;
     int lazy_imports_enabled = _PyImport_IsLazyImportsEnabled();
@@ -2126,11 +2148,13 @@ _PyImport_ImportFrom(PyThreadState *tstate, PyObject *v, PyObject *name)
     x = PyImport_GetModule(fullmodname);
     Py_DECREF(fullmodname);
     if (x == NULL && !_PyErr_Occurred(tstate)) {
+        // not here
         goto error;
     }
     Py_DECREF(pkgname);
     return x;
  error:
+    //  printf("_PyImport_ImportFrom error\n");
     pkgpath = PyModule_GetFilenameObject(v);
     if (pkgname == NULL) {
         pkgname_or_unknown = PyUnicode_FromString("<unknown module name>");
@@ -2174,9 +2198,9 @@ _PyImport_ImportFrom(PyThreadState *tstate, PyObject *v, PyObject *name)
 static PyObject *
 _imp_load_lazy_import_impl(PyLazyImport *lazy_import)  // was _imp_import_deferred_impl(PyDeferredObject *d)
 {
+    //printf("_imp_load_lazy_import_impl start\n");
     PyObject *obj;
     if (lazy_import->lz_next != NULL) {
-        fprintf(stderr, "resolving lz_next\n");
         PyObject *value = _imp_load_lazy_import_impl((PyLazyImport *)lazy_import->lz_next);
         if (value == NULL) {
             return NULL;
@@ -2196,6 +2220,7 @@ _imp_load_lazy_import_impl(PyLazyImport *lazy_import)  // was _imp_import_deferr
                                        lazy_loaded);
         Py_XDECREF(lazy_loaded);
         if (obj == NULL) {
+            // return here
             return NULL;
         }
     } else {
@@ -2218,12 +2243,15 @@ _imp_load_lazy_import_impl(PyLazyImport *lazy_import)  // was _imp_import_deferr
             obj = value;
         }
     }
+
+    // will not reach here
     return obj;
 }
 
 PyObject *
 PyImport_LoadLazyImport(PyObject *lazy_import)  // was PyImport_ImportDeferred(PyObject *deferred)
 {
+    // start from here
     assert(lazy_import != NULL);
     assert(PyLazyImport_CheckExact(lazy_import));
     PyLazyImport *lz = (PyLazyImport *)lazy_import;
@@ -2232,12 +2260,60 @@ PyImport_LoadLazyImport(PyObject *lazy_import)  // was PyImport_ImportDeferred(P
         obj = _imp_load_lazy_import_impl(lz);
         if (obj != NULL)
             lz->lz_obj = obj;
+        else {
+            // raise error here QAQ
+
+            // PyObject *exc, *val, *tb;
+            // PyErr_Fetch(&exc, &val, &tb); // exc => ModuleNotFoundError
+
+            // [1]    23033 segmentation fault  ./python.exe -L start.py
+            // _PyErr_ChainExceptions(PyExc_LazyImportsError, val, tb); // exc => ModuleNotFoundError
+
+
+            // /* Initialize new exception object */
+            if (LZERROR == NULL)
+                LZERROR = PyErr_NewException("_imp.LZERROR", PyExc_Exception, NULL);
+
+            PyThreadState *tstate = _PyThreadState_GET();
+            PyObject* mod = PyImport_GetModule((PyLazyImport *)lazy_import->lz_name);
+            // /* Add exception object to your module */
+            PyModule_AddObject(mod, "LZERROR", LZERROR);
+
+
+
+            // init_LazyImportsError();
+            // imp_module
+            PyErr_SetString(LZERROR, "yoyoyoyoyo RRRRR");
+
+
+
+
+
+            // PyObject *exc, *val, *tb;
+            // PyErr_Fetch(&exc, &val, &tb);
+            // _PyErr_ChainExceptions(PyExc_LazyImportsError, val, tb);
+
+            // PyErr_Fetch(&exc, &val, &tb);
+            // PyErr_SetObject(PyExc_LazyImportsError, val);
+
+
+            // PyObject* new_exc = PyErr_CreateException(PyExc_LazyImportsError, val);
+            // _PyErr_ChainExceptions(new_exc, val, tb);
+
+            // PyErr_SetObject(PyExc_LazyImportsError, val);
+            // PyErr_SetString(SpecialisedError, "yoyoyoyoyo RRRRR");
+
+            // PyErr_SetString(PyExc_LazyImportsError, "yoyoyoyoyo RRRRR");
+            // PyExc_ImportError
+            // ModuleNotFoundError
+            //PyErr_SetString
+        }
     }
     return obj;
 }
 
 PyObject *
-PyImport_GetModule(PyObject *name)
+PyImport_GetModule(PyObject *name) // =_=
 {
     PyThreadState *tstate = _PyThreadState_GET();
     PyObject *mod;
@@ -2860,11 +2936,14 @@ PyInit__imp(void)
 }
 
 
+
+
+
 // Import the _imp extension by calling manually _imp.create_builtin() and
 // _imp.exec_builtin() since importlib is not initialized yet. Initializing
 // importlib requires the _imp module: this function fix the bootstrap issue.
 PyObject*
-_PyImport_BootstrapImp(PyThreadState *tstate)
+_PyImport_BootstrapImp(PyThreadState *tstate) // wow
 {
     PyObject *name = PyUnicode_FromString("_imp");
     if (name == NULL) {

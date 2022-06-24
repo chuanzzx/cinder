@@ -104,6 +104,13 @@ _PyErr_CreateException(PyObject *exception_type, PyObject *value)
     return exc;
 }
 
+PyObject*
+PyErr_CreateException(PyObject *exception_type, PyObject *value)
+{
+    PyErr_CreateException(exception_type, value);
+}
+
+// omg
 void
 _PyErr_SetObject(PyThreadState *tstate, PyObject *exception, PyObject *value)
 {

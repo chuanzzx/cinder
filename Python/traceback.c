@@ -146,7 +146,7 @@ tb_next_set(PyTracebackObject *self, PyObject *new_next, void *Py_UNUSED(_))
     return 0;
 }
 
-
+// py method
 static PyMethodDef tb_methods[] = {
    {"__dir__", _PyCFunction_CAST(tb_dir), METH_NOARGS},
    {NULL, NULL, 0, NULL},
@@ -251,6 +251,7 @@ PyTraceBack_Here(PyFrameObject *frame)
     PyErr_Fetch(&exc, &val, &tb);
     newtb = _PyTraceBack_FromFrame(tb, frame);
     if (newtb == NULL) {
+        printf("chain exceptions!\n");
         _PyErr_ChainExceptions(exc, val, tb);
         return -1;
     }
@@ -1323,4 +1324,3 @@ _Py_DumpTracebackThreads(int fd, PyInterpreterState *interp,
 
     return NULL;
 }
-
